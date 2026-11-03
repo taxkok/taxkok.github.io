@@ -150,7 +150,6 @@
   }
   details.help[open] { background: var(--bg); border-radius: 12px; padding: 12px 16px; }
   details.help p { margin: 8px 0 0; color: var(--text); }
-
   .result .empty { color: var(--muted); font-size: 1rem; margin: 0; text-align: center; padding: 6px 0; }
   .result-title { font-size: 1.15rem; font-weight: 800; margin: 0 0 4px; }
   .row {
@@ -268,6 +267,10 @@
   .step h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font-size: 1.15rem; }
   .step p { margin: 6px 0 0; font-size: 1rem; }
   .step .tip { color: var(--muted); font-size: 0.9rem; }
+  .step .tip-box {
+    margin-top: 10px; padding: 12px 14px; border-radius: 12px;
+    background: var(--warn-soft); border: 2px solid #f59e0b; color: var(--warn); font-size: 0.95rem;
+  }
   .path { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
   .path span {
     background: var(--primary-soft); color: var(--primary-dark); border-radius: 8px;
@@ -277,6 +280,11 @@
   .step .row { padding: 10px 0; }
   .step .row .val strong { font-size: 1.25rem; }
   .step .ext { margin-top: 12px; text-align: center; text-decoration: none; }
+  /* 손택스 화면 캡처 (상호·사업자번호 등은 모자이크) */
+  .shots { display: flex; gap: 10px; margin-top: 12px; }
+  .shot { display: block; width: 100%; max-width: 240px; margin: 0 auto; height: auto;
+    border: 1px solid var(--line, #ddd); border-radius: 12px; }
+  .shots .shot { width: calc(50% - 5px); margin: 0; }
   .warn-text { color: var(--warn); font-weight: 700; }
 
   /* 이번 달 세금계산서 발급 기한 */
@@ -939,6 +947,33 @@
           '<a class="btn btn-ghost ext" href="https://www.hometax.go.kr" target="_blank" rel="noopener">홈택스 열기</a>');
   }
 
+  // 손택스 화면 캡처. 두 장을 주면 나란히 보여줍니다.
+  function shot(...imgs) {
+    const tags = imgs.map(([name, alt]) =>
+      '<img class="shot" src="images/sontax-' + name + '.jpg" alt="' + alt + '" width="540" height="1120" loading="lazy">').join('');
+    return imgs.length > 1 ? '<div class="shots">' + tags + '</div>' : tags;
+  }
+
+  // 손택스 거래처 등록 방법 (눌러야 열리게 닫아 둡니다)
+  function partnerHelp() {
+    return '<details class="help">' +
+      '<summary>거래처 등록하는 방법</summary>' +
+      '<p>한 번 등록해 두면 다음부터 <b>[거래처 조회]</b>에서 바로 고를 수 있어요.</p>' +
+      '<p><b>1.</b> 오른쪽 위 <b>전체 메뉴(☰)</b>에서 <b>[거래처 관리 및 품목 조회]</b>를 누르세요.</p>' +
+      '<div class="path"><span>전자(세금)계산서 발급</span><i>›</i><span>거래처 관리 및 품목 조회</span></div>' +
+      shot(['partner-menu', '전체 메뉴의 거래처 관리 및 품목 조회']) +
+      '<p><b>2.</b> 화면 맨 아래 <b>[건별등록]</b>을 누르세요.</p>' +
+      shot(['partner-list', '거래처 및 품목 조회 화면의 건별등록 단추']) +
+      '<p><b>3.</b> <b>필수</b> 표시가 있는 칸만 적으면 돼요.</p>' +
+      '<p class="tip">거래처 사업자등록번호, 상호, 대표자, 사업장 주소, 업태, 주 담당자 이메일. 나머지 칸은 안 적어도 돼요.</p>' +
+      shot(['partner-basic', '기본정보에서 필수로 적는 칸']) +
+      '<p class="tip">아래로 내리면 <b>주 담당자 정보</b>가 나와요. 이메일만 적으세요.</p>' +
+      shot(['partner-contact', '주 담당자 정보에서 필수로 적는 이메일']) +
+      '<p><b>4.</b> 다 적었으면 맨 아래 <b>[등록]</b>을 누르세요.</p>' +
+      shot(['partner-save', '거래처정보 건별등록 화면의 등록 단추']) +
+      '</details>';
+  }
+
   function field(label, sub, value, unit) {
     const shown = unit === '개' ? value.toLocaleString('ko-KR') + '개' : won(value);
     return '<div class="row"><div class="label">' + label + (sub ? '<em>' + sub + '</em>' : '') + '</div>' +
@@ -961,7 +996,7 @@
         '<p class="tip">품목 줄이 모자라면 품목을 추가하는 버튼을 누르세요.</p>'
       : '<p>품목 칸에 물건이나 일의 이름을 적고, <b>공급가액</b>을 붙여넣으세요.</p>';
     amounts += '<p class="tip">세액은 ' + app + '가 자동으로 채워 줘요.' +
-      (unitExcl ? ' 수량·단가는 적고 싶을 때만 적으세요.' : ' 수량·단가 칸은 비워 두셔도 돼요.') + '</p>';
+      (unitExcl ? ' 규격·수량·단가는 적고 싶을 때만 적으세요.' : ' 규격·수량·단가 칸은 비워 두셔도 돼요.') + '</p>';
     if (sontax) amounts += '<p class="tip">여기서 <b>[복사]</b>를 누른 뒤, 손택스의 공급가액 칸을 <b>꾹 누르고 [붙여넣기]</b>를 고르세요.</p>';
     rows.forEach((x, i) => {
       if (many) amounts += '<p class="guide-item">품목 ' + (i + 1) + '</p>';
@@ -980,32 +1015,54 @@
 
     const start = loginStep(++n, sontax) + (sontax
       ? step(++n, '발급 화면 찾기',
-          '<p>첫 화면에서 <b>[전자(세금)계산서 발급]</b>을 누르세요.</p>' +
+          '<p>첫 화면 <b>맞춤형 추천 메뉴</b>에서 <b>[전자세금계산서 건별발급]</b>을 누르세요.</p>' +
+          '<p>다음 화면에서 맨 위 <b>[전자세금계산서 발급]</b>을 누르세요.</p>' +
           '<p class="tip">첫 화면에 없으면 <b>전체 메뉴(☰)</b>에서 차례로 누르세요.</p>' +
-          '<div class="path"><span>전자(세금)계산서</span><i>›</i><span>발급</span><i>›</i><span>건별발급</span></div>')
+          '<div class="path"><span>전자(세금)계산서 발급</span><i>›</i><span>전자세금계산서 건별발급</span><i>›</i><span>전자세금계산서 발급</span></div>' +
+          shot(['home', '손택스 첫 화면의 전자세금계산서 건별발급 메뉴'], ['menu', '전자세금계산서 발급 메뉴'])) +
+        step(++n, '내 정보 확인하기',
+          '<p><b>① 공급자</b> 화면에 내 사업자 정보가 미리 채워져 있어요.</p>' +
+          '<p>맞으면 맨 아래 <b>[다음]</b>을 누르고, 창이 뜨면 <b>[확인]</b>을 누르세요.</p>' +
+          '<p class="tip">다음 단계로 넘어갈 때마다 확인 창이 떠요. 매번 <b>[확인]</b>을 누르면 돼요.</p>' +
+          shot(['supplier', '공급자 화면 (내 정보는 가려 두었어요)']))
       : step(++n, '발급 화면 찾기',
           '<p>위쪽 메뉴에서 차례로 누르세요.</p>' +
           '<div class="path"><span>계산서·영수증·카드</span><i>›</i><span>전자(세금)계산서 발급</span><i>›</i><span>건별 발급</span></div>' +
           '<p class="tip">메뉴 이름이 조금 다르면 <b>"건별 발급"</b>을 찾으세요.</p>'));
 
+    // 손택스 안내에만 화면 캡처를 붙입니다.
+    const pic = (...imgs) => (sontax ? shot(...imgs) : '');
+
     $('guideSteps').innerHTML =
       start +
-      step(++n, '종류는 "일반" 그대로',
-        '<p>계산서 종류는 <b>일반</b>을 그대로 두세요.</p>') +
+      (sontax ? '' : step(++n, '종류는 "일반" 그대로',
+        '<p>계산서 종류는 <b>일반</b>을 그대로 두세요.</p>')) +
       step(++n, '거래처 정보 넣기',
         '<p><b>공급받는자</b> 칸에 거래처 <b>사업자등록번호 10자리</b>를 넣고 <b>[확인]</b>을 누르세요.</p>' +
-        '<p>상호와 대표자 이름이 자동으로 채워져요. 거래처 이메일도 적어 주세요.</p>') +
+        '<p>상호와 대표자 이름이 자동으로 채워져요. 거래처 이메일도 적어 주세요.</p>' +
+        (sontax ? '<p class="tip">거래처를 미리 등록해 두면 <b>[거래처 조회]</b>를 눌러 목록에서 바로 고를 수 있어요.</p>' : '') +
+        pic(['buyer', '공급받는자 화면 (거래처 정보는 가려 두었어요)']) +
+        (sontax ? partnerHelp() : '')) +
       step(++n, '작성일자 넣기',
-        '<p>작성일자는 <b>돈이 들어온 날이 아니라</b>, 물건을 넘기거나 일을 끝낸 날이에요.</p>' +
-        '<p>한 달 치를 모아서 발급할 때는 <b>그 달 마지막 날</b>로 적어도 돼요.</p>' +
-        '<p class="tip">세금계산서는 그 <b>다음 달 10일까지</b> 발급해야 해요. 늦으면 가산세가 붙어요.</p>') +
-      step(++n, '금액 넣기', amounts) +
+        '<p>작성일자는 <b>물건이나 서비스를 제공한 날</b>이에요. 돈이 들어온 날이 아니에요.</p>' +
+        '<p class="tip-box"><b>Tip.</b> 한 거래처와 한 달에 여러 번 거래했다면, 특례로 <b>한 달 거래 금액을 모두 합쳐</b> 한 장으로 발급할 수 있어요. 이때 작성일자는 <b>그 달 마지막 날</b>(또는 거래처와 정한 기간의 마지막 날)로 적어요.</p>' +
+        (sontax ? '<p class="tip"><b>③ 품목</b> 화면 맨 위에 있어요. <b>달력 단추</b>를 누르면 날짜를 고를 수 있어요.</p>' : '') +
+        '<p class="tip">세금계산서는 그 <b>다음 달 10일까지</b> 발급해야 해요. 늦으면 가산세가 붙어요.</p>' +
+        pic(['date', '품목 화면 맨 위의 작성일자 칸'])) +
+      step(++n, '금액 넣기', amounts + pic(['amount', '품목과 공급가액은 필수, 규격·수량·단가는 선택'])) +
       step(++n, '합계 확인하기',
         field('합계금액', '', r.total, '원') +
-        '<p>' + app + ' 화면의 합계금액이 이 숫자와 같은지 확인하세요.</p>') +
-      step(++n, '영수 / 청구 고르기', receipt) +
+        '<p>' + app + ' 화면의 합계금액이 이 숫자와 같은지 확인하세요.</p>' +
+        (sontax ? '<p class="tip">품목 화면 아래쪽 <b>합계구분</b>에 나와요. 맞으면 <b>[다음]</b>을 누르세요.</p>' : '') +
+        pic(['total', '합계구분의 합계금액'])) +
+      step(++n, '영수 / 청구 고르기', receipt +
+        (sontax ? '<p class="tip"><b>④ 결제</b> 화면에서 골라요. 고른 뒤 <b>[다음]</b>을 누르세요.</p>' : '') +
+        pic(['receipt', '결제구분에서 영수를 고른 화면'])) +
       step(++n, '[발급하기] 누르기',
+        (sontax ? '<p><b>[발급 미리보기]</b>를 눌러 내용을 한 번 더 보세요.</p>' : '') +
         '<p>모두 맞으면 <b>[발급하기]</b>를 누르면 끝이에요.</p>' +
+        (sontax ? '<p>확인 창에서 <b>[확인]</b>을 누른 뒤 <b>인증 방법</b>(공동인증서, 간편인증, 금융인증서)을 고르고 인증하면 발급돼요.</p>' +
+          pic(['preview', '미리보기 화면 아래의 발급하기 단추'], ['cert', '발급 인증 방법 고르기']) : '') +
         '<p class="warn-text">발급한 계산서는 지울 수 없어요. 누르기 전에 한 번 더 확인하세요.</p>' +
         '<p class="tip">틀린 것을 나중에 알았다면 <a href="#fix">수정세금계산서</a>로 고칠 수 있어요.</p>' +
         '<p class="tip">' + app + ' 화면은 바뀔 수 있어요. (2026년 10월 기준 안내)</p>');
