@@ -306,6 +306,9 @@
   .fix-sum dt { flex: none; width: 5.2em; color: var(--muted); font-weight: 700; }
   .fix-sum dd { margin: 0; font-weight: 700; }
   .fix-sum b { color: var(--primary-dark); }
+  .fix-group { margin: 22px 4px 10px; font-size: 1.05rem; font-weight: 700; }
+  .fix-group:first-child { margin-top: 0; }
+  .fix-group b { color: var(--error); }
 
   footer { text-align: center; color: var(--muted); font-size: 0.85rem; padding: 0 16px 32px; }
 
@@ -1088,64 +1091,78 @@
   });
 
   // ---- 수정세금계산서 발급 안내 ----
-  // reason: 홈택스·손택스에서 고르는 수정사유, date: 작성일자, sheets: 몇 장을 어떻게, deadline: 발급 기한
+  // 홈택스 수정세금계산서 안내 화면의 다섯 가지 경우 (내국신용장 사후 개설은 따로 묻도록 안내)
+  // group: 작성일자를 정하는 방법, reason: 홈택스·손택스에서 고르는 수정사유, date: 작성일자,
+  // sheets: 몇 장을 어떻게, deadline: 발급 기한, report: 부가세 신고는 어떻게
+  const FIX_GROUPS = {
+    same: '처음 계산서와 <b>같은 작성일자</b>로 발급해요',
+    new: '<b>바뀐 날</b>을 작성일자로 발급해요',
+  };
   const FIX_CASES = {
-    price: {
-      label: '금액이 바뀌었어요', when: '값을 깎아 줬거나, 더 받기로 했을 때',
-      reason: '공급가액 변동',
-      date: '<b>금액이 바뀐 날</b> (처음 계산서 날짜가 아니에요)',
-      sheets: '<b>바뀐 만큼만 1장</b>. 줄었으면 마이너스(−), 늘었으면 플러스(+) 금액이에요.',
-      example: '예) 100만 원으로 발급했는데 10만 원을 깎아 줌 → 공급가액 −10만 원 1장',
-      deadline: '금액이 바뀐 날의 <b>다음 달 10일까지</b>'
-    },
-    return: {
-      label: '물건이 반품됐어요', when: '팔았던 물건을 일부나 전부 돌려받았을 때',
-      reason: '환입',
-      date: '<b>물건을 돌려받은 날</b>',
-      sheets: '<b>돌려받은 만큼 마이너스(−) 1장</b>',
-      example: '예) 100만 원어치 중 30만 원어치가 반품됨 → 공급가액 −30만 원 1장',
-      deadline: '돌려받은 날의 <b>다음 달 10일까지</b>'
-    },
-    cancel: {
-      label: '거래가 취소됐어요', when: '계약을 없던 일로 했을 때',
-      reason: '계약의 해제',
-      date: '<b>계약을 취소한 날</b>',
-      sheets: '처음 금액 <b>전부를 마이너스(−)로 1장</b>',
-      example: '예) 100만 원으로 발급했는데 계약이 취소됨 → 공급가액 −100만 원 1장',
-      deadline: '취소한 날의 <b>다음 달 10일까지</b>'
-    },
     wrong: {
-      label: '잘못 적었어요', when: '금액, 거래처, 날짜, 품목 등을 틀리게 적었을 때',
-      reason: '기재사항 착오·정정',
+      group: 'same', label: '기재사항 착오 정정 등',
+      when: '작성일자, 공급가액, 공급받는자 사업자등록번호 등 꼭 적어야 하는 내용을 잘못 적었을 때',
+      reason: '기재사항 착오 정정 등',
       date: '<b>처음 계산서와 같은 날짜</b> 그대로',
-      sheets: '<b>2장</b>이 나가요. 처음 것을 없애는 마이너스(−) 1장 + 바르게 고친 플러스(+) 1장이에요.',
-      example: '처음 계산서를 불러와서 고치면, 2장을 같이 만들어 줘요.',
-      deadline: '틀린 걸 알면 <b>바로</b> 고치세요. 부가세 신고를 한 뒤에 고치면 수정신고를 해야 할 수 있어요.'
+      sheets: '<b>2장</b> 발급돼요.<br>① 처음 계산서 취소 1장 (자동으로 만들어져요)<br>② 바르게 고친 계산서 1장 (직접 적어요)',
+      example: '처음 계산서를 불러와서 고치면, 취소하는 1장은 자동으로 만들어 줘요.',
+      deadline: '틀린 걸 알면 <b>바로</b> 고치세요.',
+      report: '부가세 신고기한이 지난 뒤에 고치면 <b>꼭 수정신고</b>를 해야 해요. 가산세가 붙을 수 있어요.'
     },
     double: {
-      label: '같은 걸 두 번 발급했어요', when: '실수로 한 번 더 발급했을 때',
-      reason: '착오에 의한 이중발급',
-      date: '<b>없앨 계산서와 같은 날짜</b> 그대로',
-      sheets: '<b>두 번째로 발급한 것</b>을 마이너스(−) 1장으로 없애요.',
-      example: '처음 계산서를 불러오면 마이너스 금액이 자동으로 채워져요.',
-      deadline: '알게 되면 <b>바로</b> 고치세요.'
+      group: 'same', label: '착오에 의한 이중발급 등',
+      when: '같은 세금계산서를 두 번 발행했거나, 세금계산서를 발급하면 안 되는 거래(면세 등)에 발행했을 때',
+      reason: '착오에 의한 이중발급 등',
+      date: '<b>취소할 계산서와 같은 날짜</b> 그대로',
+      sheets: '<b>1장</b> 발급돼요.<br>① 잘못 발급한 계산서 취소 1장 (자동으로 만들어져요)',
+      example: '처음 계산서를 불러오면 마이너스(−) 금액이 자동으로 채워져요. 면세 거래였다면 세금계산서 대신 <b>계산서</b>를 새로 발급해요.',
+      deadline: '알게 되면 <b>바로</b> 고치세요.',
+      report: '부가세 신고기한이 지난 뒤에 고치면 <b>꼭 수정신고</b>를 해야 해요. 가산세가 붙을 수 있어요.'
     },
-    exempt: {
-      label: '세금계산서를 끊으면 안 되는 거래였어요', when: '부가세가 없는 면세 물건·서비스였을 때',
-      reason: '면세 등 발급대상 아님',
-      date: '<b>처음 계산서와 같은 날짜</b> 그대로',
-      sheets: '처음 금액 <b>전부를 마이너스(−)로 1장</b>',
-      example: '면세 거래라면 세금계산서 대신 <b>계산서</b>를 새로 발급해요.',
-      deadline: '알게 되면 <b>바로</b> 고치세요.'
+    price: {
+      group: 'new', label: '공급가액의 변동',
+      when: '처음 발행한 세금계산서의 공급가액이 늘거나 줄었을 때',
+      reason: '공급가액의 변동',
+      date: '<b>금액이 바뀐 날</b> (처음 계산서 날짜가 아니에요)',
+      sheets: '<b>1장</b> 발급돼요.<br>① 늘어난 만큼 플러스(+), 줄어든 만큼 마이너스(−) 금액으로 1장 (직접 적어요)',
+      example: '예) 100만 원으로 발급했는데 10만 원을 깎아 줌 → 공급가액 −10만 원 1장',
+      deadline: '금액이 바뀐 날의 <b>다음 달 10일까지</b>',
+      report: '금액이 바뀐 날이 들어 있는 기간의 부가세 신고에 넣어요. <b>수정신고는 안 해도 돼요.</b>'
+    },
+    cancel: {
+      group: 'new', label: '계약의 해제',
+      when: '거래가 취소돼서 물건이나 서비스를 주지 않게 됐을 때',
+      reason: '계약의 해제',
+      date: '<b>계약을 취소한 날</b>',
+      sheets: '<b>1장</b> 발급돼요.<br>① 처음 계산서 취소 1장 (직접 적어요)',
+      example: '예) 100만 원으로 발급했는데 계약이 취소됨 → 공급가액 −100만 원 1장',
+      deadline: '취소한 날의 <b>다음 달 10일까지</b>',
+      report: '계약을 취소한 날이 들어 있는 기간의 부가세 신고에 넣어요. <b>수정신고는 안 해도 돼요.</b>'
+    },
+    return: {
+      group: 'new', label: '환입',
+      when: '거래가 취소돼서 물건이 반품되고 공급가액이 줄었을 때',
+      reason: '환입',
+      date: '<b>물건을 돌려받은 날</b>',
+      sheets: '<b>1장</b> 발급돼요.<br>① 반품된 금액만큼 마이너스(−)로 1장 (직접 적어요)',
+      example: '예) 100만 원어치 중 30만 원어치가 반품됨 → 공급가액 −30만 원 1장',
+      deadline: '돌려받은 날의 <b>다음 달 10일까지</b>',
+      report: '돌려받은 날이 들어 있는 기간의 부가세 신고에 넣어요. <b>수정신고는 안 해도 돼요.</b>'
     },
   };
 
-  Object.entries(FIX_CASES).forEach(([id, c]) => {
-    const b = document.createElement('button');
-    b.className = 'mode';
-    b.innerHTML = '<span><b>' + c.label + '</b><small>' + c.when + '</small></span><span class="chevron" aria-hidden="true"></span>';
-    b.addEventListener('click', () => { location.hash = 'fix/' + id; });
-    $('fixCases').appendChild(b);
+  Object.entries(FIX_GROUPS).forEach(([g, title]) => {
+    const h = document.createElement('p');
+    h.className = 'fix-group';
+    h.innerHTML = title;
+    $('fixCases').appendChild(h);
+    Object.entries(FIX_CASES).filter(([, c]) => c.group === g).forEach(([id, c]) => {
+      const b = document.createElement('button');
+      b.className = 'mode';
+      b.innerHTML = '<span><b>' + c.label + '</b><small>' + c.when + '</small></span><span class="chevron" aria-hidden="true"></span>';
+      b.addEventListener('click', () => { location.hash = 'fix/' + id; });
+      $('fixCases').appendChild(b);
+    });
   });
   $('fixBack').addEventListener('click', () => history.back());
 
@@ -1162,6 +1179,7 @@
         '<div><dt>작성일자</dt><dd>' + c.date + '</dd></div>' +
         '<div><dt>발급</dt><dd>' + c.sheets + '</dd></div>' +
         '<div><dt>언제까지</dt><dd>' + c.deadline + '</dd></div>' +
+        '<div><dt>부가세 신고</dt><dd>' + c.report + '</dd></div>' +
       '</dl></div>' +
       loginStep(++n, sontax) +
       step(++n, '수정 발급 화면 찾기',
