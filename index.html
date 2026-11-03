@@ -184,7 +184,7 @@
   .btn-primary { background: var(--primary); color: #fff; }
   .btn-ghost { background: var(--card); color: var(--text); border: 1px solid var(--line-strong); }
 
-  .guide-btn { margin-top: 14px; }
+  .guide-btn { margin: 14px 0 12px; }
 
   /* 품목 */
   .item + .item { margin-top: 18px; padding-top: 18px; border-top: 1px dashed var(--line-strong); }
@@ -552,6 +552,7 @@
     </div>
 
     <div id="dResult" class="card result"></div>
+    <button class="btn btn-primary guide-btn" data-mode="deposit" data-result="dResult">세금계산서 발급하는 방법 보기</button>
     <button class="btn btn-ghost reset" data-reset="deposit">지우고 새로 계산</button>
   </section>
 
@@ -581,6 +582,7 @@
     </div>
 
     <div id="uResult" class="card result"></div>
+    <button class="btn btn-primary guide-btn" data-mode="unit" data-result="uResult">세금계산서 발급하는 방법 보기</button>
     <button class="btn btn-ghost reset" data-reset="unit">지우고 새로 계산</button>
   </section>
 
@@ -592,7 +594,7 @@
       <button data-where="sontax">휴대폰<small>손택스 앱</small></button>
       <button data-where="hometax">컴퓨터<small>홈택스</small></button>
     </div>
-    <p class="guide-intro">아래 순서대로 따라 하세요.<br>숫자는 방금 계산한 금액이에요.</p>
+    <p class="guide-intro" id="guideIntro"></p>
     <div id="guideSteps"></div>
     <button class="btn btn-ghost guide-back">← 계산 화면으로 돌아가기</button>
   </section>
@@ -720,6 +722,7 @@
 
   // 결과 카드 그리기
   function renderResult(box, r, note, noteWarn, ctx) {
+    box.guideCtx = r ? ctx : null; // 아래 [발급하는 방법 보기] 단추가 이 금액을 씁니다
     if (!r) {
       box.innerHTML = '<p class="empty">위 칸을 채우면<br>여기에 계산 결과가 나와요.</p>';
       return;
@@ -730,14 +733,17 @@
       row('세액', r.safe ? '(자동으로 채워져요)' : '(직접 고쳐야 해요)', r.vat, '', !r.safe) +
       row('합계금액', '', r.total, 'total', false) +
       (r.safe ? '' : '<div class="note warn">' + fixVatText(r) + '</div>') +
-      '<div class="note' + (noteWarn ? ' warn' : '') + '">' + note + '</div>' +
-      '<button class="btn btn-primary guide-btn">세금계산서 발급하는 방법 보기</button>';
+      '<div class="note' + (noteWarn ? ' warn' : '') + '">' + note + '</div>';
     bindCopy(box);
-    box.querySelector('.guide-btn').addEventListener('click', () => {
-      guideData = ctx;
+  }
+
+  // [발급하는 방법 보기]는 계산 전에도 누를 수 있게 늘 보여줍니다. 계산했으면 그 금액을 안내에 넣습니다.
+  document.querySelectorAll('.guide-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      guideData = $(btn.dataset.result).guideCtx || { mode: btn.dataset.mode, r: null };
       location.hash = 'guide';
     });
-  }
+  });
 
   // 품목이 여러 개면 고칠 품목이 따로 있으므로 안내에서 품목별로 보여줍니다.
   function fixVatText(r) {
@@ -984,20 +990,24 @@
   function renderGuide(g) {
     const r = g.r;
     const unitExcl = g.mode === 'unit' && g.vat === 'excl';
-    const rows = g.mode === 'unit' ? g.rows : [{ r }];
+    // 계산하지 않고 들어오면 r이 없어서 금액 없이 순서만 보여줍니다.
+    const rows = !r ? [] : g.mode === 'unit' ? g.rows : [{ r }];
     const many = rows.length > 1;
     const sontax = guideWhere === 'sontax';
     const app = sontax ? '손택스' : '홈택스';
     $('guideTitle').textContent = app + '로 발급하는 방법';
+    $('guideIntro').innerHTML = r
+      ? '아래 순서대로 따라 하세요.<br>숫자는 방금 계산한 금액이에요.'
+      : '아래 순서대로 따라 하세요.<br>금액을 먼저 계산하면 넣을 숫자도 함께 보여 드려요.';
     document.querySelectorAll('.seg.where button').forEach((b) => b.classList.toggle('on', b.dataset.where === guideWhere));
     let n = 0;
     let amounts = many
       ? '<p>품목 한 줄에 하나씩, 이름을 적고 <b>공급가액</b>을 붙여넣으세요.</p>' +
         '<p class="tip">품목 줄이 모자라면 품목을 추가하는 버튼을 누르세요.</p>'
-      : '<p>품목 칸에 물건이나 일의 이름을 적고, <b>공급가액</b>을 붙여넣으세요.</p>';
+      : '<p>품목 칸에 물건이나 일의 이름을 적고, <b>공급가액</b>을 ' + (r ? '붙여넣으세요' : '적으세요') + '.</p>';
     amounts += '<p class="tip">세액은 ' + app + '가 자동으로 채워 줘요.' +
       (unitExcl ? ' 규격·수량·단가는 적고 싶을 때만 적으세요.' : ' 규격·수량·단가 칸은 비워 두셔도 돼요.') + '</p>';
-    if (sontax) amounts += '<p class="tip">여기서 <b>[복사]</b>를 누른 뒤, 손택스의 공급가액 칸을 <b>꾹 누르고 [붙여넣기]</b>를 고르세요.</p>';
+    if (sontax && r) amounts += '<p class="tip">여기서 <b>[복사]</b>를 누른 뒤, 손택스의 공급가액 칸을 <b>꾹 누르고 [붙여넣기]</b>를 고르세요.</p>';
     rows.forEach((x, i) => {
       if (many) amounts += '<p class="guide-item">품목 ' + (i + 1) + '</p>';
       if (unitExcl) amounts += field('수량', '(적고 싶을 때만)', x.qty, '개') + field('단가', '(적고 싶을 때만)', x.price, '원');
@@ -1051,8 +1061,9 @@
         pic(['date', '품목 화면 맨 위의 작성일자 칸'])) +
       step(++n, '금액 넣기', amounts + pic(['amount', '품목과 공급가액은 필수, 규격·수량·단가는 선택'])) +
       step(++n, '합계 확인하기',
-        field('합계금액', '', r.total, '원') +
-        '<p>' + app + ' 화면의 합계금액이 이 숫자와 같은지 확인하세요.</p>' +
+        (r ? field('합계금액', '', r.total, '원') +
+          '<p>' + app + ' 화면의 합계금액이 이 숫자와 같은지 확인하세요.</p>'
+          : '<p>' + app + ' 화면의 합계금액이 <b>공급가액 + 세액</b>과 같은지 확인하세요.</p>') +
         (sontax ? '<p class="tip">품목 화면 아래쪽 <b>합계구분</b>에 나와요. 맞으면 <b>[다음]</b>을 누르세요.</p>' : '') +
         pic(['total', '합계구분의 합계금액'])) +
       step(++n, '영수 / 청구 고르기', receipt +

@@ -1,6 +1,6 @@
 // 앱 화면을 휴대폰에 저장해 두어서 인터넷이 약해도 바로 열리게 합니다.
 // 파일을 고치면 CACHE 이름의 숫자를 올려야 휴대폰에 새 버전이 들어갑니다.
-const CACHE = 'taxkok-v3';
+const CACHE = 'taxkok-v4';
 const FILES = [
   './',
   'index.html',
